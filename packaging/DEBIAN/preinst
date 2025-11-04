@@ -1,0 +1,21 @@
+#!/bin/sh
+# vim:ts=2:sw=2:et -*- mode: sh; sh-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+set -e
+
+case "$1" in
+  install|upgrade)
+    usr_share="/usr/share/raspi-boot-alternatives"
+    divert_dir="${usr_share}/diversions"
+    mkdir -p "$divert_dir"
+    for diversion in \
+      "/etc/kernel/postinst.d/z50-raspi-firmware" \
+      "/etc/initramfs/post-update.d/z50-raspi-firmware"
+    do
+      dpkg-divert --package raspi-boot-alternatives --rename \
+        --add "${diversion}" \
+        --divert "${divert_dir}${diversion}"
+    done
+    ;;
+esac
+
+exit 0

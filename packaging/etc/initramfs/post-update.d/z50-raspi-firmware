@@ -1,0 +1,91 @@
+#!/bin/sh
+# vim:ts=2:sw=2:et -*- mode: sh; sh-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil -*-
+# Wrapper installed by rpi-boot-alternatives: keeps raspi-firmware initramfs
+# handling for stock kernels while mirroring initramfs images for alternates.
+
+set -e
+
+# Play nice when run under debconf.
+exec </dev/null >&2
+
+initrd_version="$1"
+initrd_path="$2"
+firmware_dst="/boot/firmware/alternatives/$initrd_version"
+
+eval set -- "$DEB_MAINT_PARAMS"
+
+# shellcheck source=/etc/default/raspi-boot-alternatives
+. /etc/default/raspi-boot-alternatives 2>/dev/null || true
+ALT_REGEX=${ALT_REGEX:-}
+
+# If ALT_REGEX not set or does not match, run original script
+if  [ -z "$initrd_version" ] ||
+      [ -z "$initrd_path" ] ||
+      [ -z "$ALT_REGEX" ] ||
+      ! printf '%s\n' "$initrd_version" | grep -Eq "$ALT_REGEX"; then
+  diversions="/usr/share/raspi-boot-alternatives/diversions"
+  orig="${diversions}/etc/initramfs/post-update.d/z50-raspi-firmware"
+  if [ -x "$orig" ]; then
+    exec "$orig" "$@"
+  fi
+  exit 0
+fi
+
+# Only run on configure and remove to avoid unnecessary work.
+case "$1" in
+  configure|remove|"")
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+is_arm_system() {
+  # Check to see if the host is running an arm-based system
+  # (i.e. whether the raspi-firmware package is useful)
+  DPKG_ARCH=$(dpkg --print-architecture)
+  case "$DPKG_ARCH" in
+    arm64|armel|armhf)
+      return 0;;
+    *)
+      return 1;;
+  esac
+}
+
+if ! is_arm_system ; then
+  # Not running on an arm-based system, skip postinst.
+  exit 0
+fi
+
+flavourful="${initrd_version#*-rpi-}"
+flavour=${flavourful%%-*}
+
+case $flavour in
+  v8|v8-rt|2712|v6|v7)
+    ;;
+  *)
+    echo "WARNING: Unsupported initramfs version ($initrd_version) - skipping setup"
+    echo "NOTE: Manual boot configuration may be required"
+    exit 0
+    ;;
+esac
+
+suffix="$(echo "$flavour" | sed 's/^v//;s/^6//;s/2712/_2712/;s/-/_/;')"
+initrd_dst="$firmware_dst/initramfs${suffix}"
+
+case "$1" in
+  configure|"")
+    if ! [ -e "$initrd_path" ]; then
+      echo "WARNING: $initrd_path not found"
+      exit 0
+    fi
+    cp -v "$initrd_path" "$initrd_dst"
+    ;;
+  remove)
+    rm -fv "$initrd_dst"
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+sync "$firmware_dst"

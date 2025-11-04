@@ -1,0 +1,111 @@
+#!/bin/sh
+# vim:ts=2:sw=2:et -*- mode: sh; sh-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil -*-
+# Wrapper installed by raspi-boot-alternatives: preserves raspi-firmware behaviour
+# for stock Raspberry Pi kernels. Installs alternate kernels into
+# /boot/firmware/<version>
+
+set -e
+
+# Play nice when run under debconf.
+exec </dev/null >&2
+
+kernel_version="$1"
+image_path="$2"
+firmware_dst="/boot/firmware/alternatives/$kernel_version"
+
+eval set -- "$DEB_MAINT_PARAMS"
+
+# shellcheck source=/etc/default/raspi-boot-alternatives
+. /etc/default/raspi-boot-alternatives 2>/dev/null || true
+ALT_REGEX=${ALT_REGEX:-}
+
+# If missing params or ALT_REGEX not set or does not match, run original script
+if  [ -z "$kernel_version" ] ||
+      [ -z "$image_path" ] ||
+      [ -z "$ALT_REGEX" ] ||
+      ! printf '%s\n' "$kernel_version" | grep -Eq "$ALT_REGEX"; then
+  diversions="/usr/share/raspi-boot-alternatives/diversions"
+  orig="${diversions}/etc/kernel/postinst.d/z50-raspi-firmware"
+  if [ -x "$orig" ]; then
+    exec "$orig" "$@"
+  fi
+  exit 0
+fi
+
+# Only run on configure and remove to avoid unnecessary work.
+case "$1" in
+  configure|remove)
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+is_arm_system() {
+  # Check to see if the host is running an arm-based system
+  # (i.e. whether the raspi-firmware package is useful)
+  DPKG_ARCH=$(dpkg --print-architecture)
+  case "$DPKG_ARCH" in
+    arm64|armel|armhf)
+      return 0;;
+    *)
+      return 1;;
+  esac
+}
+
+if ! is_arm_system ; then
+  # Not running on an arm-based system, skip postinst.
+  exit 0
+fi
+
+if [ -e "$firmware_dst" ] ; then
+  echo "raspi-boot-alternatives: \"$firmware_dst\" already exists"
+  exit 1
+fi
+
+# Ensure target directory exists
+mkdir -p "${firmware_dst}/overlays"
+
+flavour="${kernel_version#*-rpi-}"
+flavour_base=${flavour%%-*}
+
+case $flavour_base in
+  v8|v8-rt|2712)
+    dtb_path="/usr/lib/linux-image-${kernel_version}/broadcom"
+    ;;
+  v6|v7)
+    dtb_path="/usr/lib/linux-image-${kernel_version}"
+    ;;
+  *)
+    echo "WARNING: Unsupported kernel version ($kernel_version) - skipping setup"
+    echo "NOTE: Manual boot configuration may be required"
+    exit 0
+    ;;
+esac
+
+# TODO: Handle removal of device tree files
+
+suffix="$(echo "$flavour_base" | sed 's/^v//;s/^6//;s/2712/_2712/;s/-/_/;')"
+kernel_dst="$firmware_dst/kernel${suffix}.img"
+
+overlay_path="/usr/lib/linux-image-${kernel_version}/overlays"
+case "$1" in
+  configure)
+    if ! [ -e "$image_path" ]; then
+      echo "ERROR: $image_path not found"
+      exit 1
+    fi
+    rsync -ct "${dtb_path}"/bcm27*.dtb "$firmware_dst/"
+    rsync -ct "${overlay_path}"/*.dtb* "${overlay_path}"/README "${firmware_dst}/overlays"
+    cp -v "$image_path" "$kernel_dst"
+    ;;
+  remove)
+    rm -fv "$kernel_dst"
+    initrd_path="$(echo "$image_path" | sed 's/vmlinuz/initrd.img/')"
+    /etc/initramfs/post-update.d/z50-raspi-firmware "$kernel_version" "$initrd_path"
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+sync "$firmware_dst"

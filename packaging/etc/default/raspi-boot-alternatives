@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# ALT_REGEX selects which kernel versions should be copied into the alternate
+# /boot/firmware/alternatives/<version>. By default this skips Raspberry Pi
+# official images which will continue to be installed directly to /boot/firmware
+#
+# - empty disables the feature
+#
+# - ".*" will install *all* kernels including raspi official
+#
+ALT_REGEX='^(v8|v8-rt|2712|v6|v7)[._+-].+'

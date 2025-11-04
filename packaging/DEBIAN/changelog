@@ -1,0 +1,5 @@
+rpi-boot-alternatives (0.1.0) unstable; urgency=medium
+
+  * Initial release with diverted Raspberry Pi post-install hooks.
+
+ -- Archie2x <archie.two.times@gmail.com>  Mon, 03 Nov 2025 10:49:50 -0800

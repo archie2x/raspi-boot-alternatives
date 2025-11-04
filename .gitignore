@@ -1,0 +1,2 @@
+# Build directories, e.g. Visual Studio / CMake create this
+/build*

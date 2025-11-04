@@ -1,0 +1,10 @@
+Package: rpi-boot-alternatives
+Version: 0.1.0
+Architecture: all
+Maintainer: Roger Standridge <archie.two.times@gmail.com>
+Depends: initramfs-tools, dpkg, coreutils, raspi-firmware
+Section: admin
+Priority: optional
+Description: Allows installation of multiple kernels on Raspberry Pi. Kernel can
+ be used one-shot through /boot/firmware/tryboot.txt or made default through
+ config.txt.

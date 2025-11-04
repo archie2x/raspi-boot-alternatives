@@ -1,4 +1,4 @@
-Package: rpi-boot-alternatives
+Package: raspi-boot-alternatives
 Version: 0.1.0
 Architecture: all
 Maintainer: Roger Standridge <archie.two.times@gmail.com>

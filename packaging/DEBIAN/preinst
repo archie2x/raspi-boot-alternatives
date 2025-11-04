@@ -6,14 +6,15 @@ case "$1" in
   install|upgrade)
     usr_share="/usr/share/raspi-boot-alternatives"
     divert_dir="${usr_share}/diversions"
-    mkdir -p "$divert_dir"
     for diversion in \
       "/etc/kernel/postinst.d/z50-raspi-firmware" \
       "/etc/initramfs/post-update.d/z50-raspi-firmware"
     do
+      dst="${divert_dir}${diversion}"
+      mkdir -p "$(dirname ${dst})"
       dpkg-divert --package raspi-boot-alternatives --rename \
-        --add "${diversion}" \
-        --divert "${divert_dir}${diversion}"
+        --divert "${dst}" \
+        --add "${diversion}"
     done
     ;;
 esac

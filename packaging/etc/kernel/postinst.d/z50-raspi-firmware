@@ -18,12 +18,14 @@ eval set -- "$DEB_MAINT_PARAMS"
 # shellcheck source=/etc/default/raspi-boot-alternatives
 . /etc/default/raspi-boot-alternatives 2>/dev/null || true
 ALT_REGEX=${ALT_REGEX:-}
+ALT_REGEX_FLAVOUR=${ALT_REGEX_FLAVOUR:-}
 
 # If missing params or ALT_REGEX not set or does not match, run original script
 if  [ -z "$kernel_version" ] ||
       [ -z "$image_path" ] ||
       [ -z "$ALT_REGEX" ] ||
-      ! printf '%s\n' "$kernel_version" | grep -Eq "$ALT_REGEX"; then
+      ! printf '%s\n' "$kernel_version" | \
+        grep -Eq -- "${ALT_REGEX_FLAVOUR}${ALT_REGEX}"; then
   diversions="/usr/share/raspi-boot-alternatives/diversions"
   orig="${diversions}/etc/kernel/postinst.d/z50-raspi-firmware"
   if [ -x "$orig" ]; then
@@ -56,11 +58,6 @@ is_arm_system() {
 if ! is_arm_system ; then
   # Not running on an arm-based system, skip postinst.
   exit 0
-fi
-
-if [ -e "$firmware_dst" ] ; then
-  echo "raspi-boot-alternatives: \"$firmware_dst\" already exists"
-  exit 1
 fi
 
 # Ensure target directory exists

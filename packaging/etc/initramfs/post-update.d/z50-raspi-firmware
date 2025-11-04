@@ -1,6 +1,6 @@
 #!/bin/sh
 # vim:ts=2:sw=2:et -*- mode: sh; sh-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil -*-
-# Wrapper installed by rpi-boot-alternatives: keeps raspi-firmware initramfs
+# Wrapper installed by raspi-boot-alternatives: keeps raspi-firmware initramfs
 # handling for stock kernels while mirroring initramfs images for alternates.
 
 set -e
@@ -17,12 +17,14 @@ eval set -- "$DEB_MAINT_PARAMS"
 # shellcheck source=/etc/default/raspi-boot-alternatives
 . /etc/default/raspi-boot-alternatives 2>/dev/null || true
 ALT_REGEX=${ALT_REGEX:-}
+ALT_REGEX_FLAVOUR=${ALT_REGEX_FLAVOUR:-}
 
 # If ALT_REGEX not set or does not match, run original script
 if  [ -z "$initrd_version" ] ||
       [ -z "$initrd_path" ] ||
       [ -z "$ALT_REGEX" ] ||
-      ! printf '%s\n' "$initrd_version" | grep -Eq "$ALT_REGEX"; then
+      ! printf '%s\n' "$initrd_version" | \
+        grep -Eq -- "${ALT_REGEX_FLAVOUR}${ALT_REGEX}"; then
   diversions="/usr/share/raspi-boot-alternatives/diversions"
   orig="${diversions}/etc/initramfs/post-update.d/z50-raspi-firmware"
   if [ -x "$orig" ]; then

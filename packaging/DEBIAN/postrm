@@ -3,7 +3,7 @@
 set -e
 
 case "$1" in
-  remove|purge)
+  remove)
     usr_share="/usr/share/raspi-boot-alternatives"
     divert_dir="${usr_share}/diversions"
     for diversion in \
@@ -11,10 +11,13 @@ case "$1" in
       "/etc/initramfs/post-update.d/z50-raspi-firmware"
     do
       dpkg-divert --package raspi-boot-alternatives --rename \
-        --remove "${diversion}" \
-        --divert "${divert_dir}${diversion}"
+        --divert "${divert_dir}${diversion}" \
+        --remove "${diversion}"
     done
     rm -rf "${usr_share}"
+    ;;
+  purge)
+    # no-op: diversions removed in remove
     ;;
 esac
 
